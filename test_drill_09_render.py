@@ -1,4 +1,4 @@
-"""실행: python test_drill_09_render.py [--capture 폴더]"""
+"""실행: python test_drill_09_render.py [--portable | --capture 폴더]"""
 import ctypes
 import hashlib
 import os
@@ -109,6 +109,29 @@ def check(capture_dir=None):
     print('PASS: real SDL input, rendered idle frames, movement, facing, corner, ESC')
 
 
+
+def check_portability():
+    import shutil
+    import subprocess
+    import tempfile
+
+    temp_base = Path(tempfile.gettempdir()).resolve()
+    with tempfile.TemporaryDirectory(prefix='drill09-', dir=temp_base) as directory:
+        temporary = Path(directory).resolve()
+        assert temporary.parent == temp_base
+        project = temporary / '옮긴 프로젝트'
+        working = temporary / '다른 작업 폴더'
+        project.mkdir()
+        working.mkdir()
+        for name in ('Drill_09_2023180036.py', 'animation_sheet.png',
+                     'TUK_GROUND.png', Path(__file__).name):
+            shutil.copy2(game.IMAGE_DIR / name, project / name)
+        subprocess.run([sys.executable, str(project / Path(__file__).name)],
+                       cwd=working, check=True)
+    print('PASS: relocated project, Korean path with spaces, alternate working directory')
+
 if __name__ == '__main__':
     capture_dir = Path(sys.argv[2]).resolve() if len(sys.argv) == 3 and sys.argv[1] == '--capture' else None
     check(capture_dir)
+    if '--portable' in sys.argv:
+        check_portability()
