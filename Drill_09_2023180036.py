@@ -13,6 +13,7 @@ IMAGE_DIR = Path(__file__).resolve().parent
 pressed_keys = set()
 running = True
 x, y = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+facing = 1  # 1: 오른쪽, -1: 왼쪽
 
 
 def handle_events():
@@ -30,9 +31,11 @@ def handle_events():
 
 
 def update():
-    global x, y
+    global x, y, facing
     dx = (SDLK_RIGHT in pressed_keys) - (SDLK_LEFT in pressed_keys)
     dy = (SDLK_UP in pressed_keys) - (SDLK_DOWN in pressed_keys)
+    if dx:
+        facing = dx
     x += dx * MOVE_STEP
     y += dy * MOVE_STEP
 
@@ -41,7 +44,8 @@ def draw(background, character):
     clear_canvas()
     background.draw(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2,
                     SCREEN_WIDTH, SCREEN_HEIGHT)
-    character.clip_draw(0, 300, FRAME_SIZE, FRAME_SIZE, x, y)
+    row = 300 if facing == 1 else 200
+    character.clip_draw(0, row, FRAME_SIZE, FRAME_SIZE, x, y)
     update_canvas()
 
 
