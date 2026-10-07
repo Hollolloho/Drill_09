@@ -78,13 +78,44 @@ def check():
             game.draw(background, character)
             assert calls[-1][:4] == (game.frame * 100, row, 100, 100)
 
+    for key, start, expected in [
+        (game.SDLK_LEFT, (51, 400), (50, 400)),
+        (game.SDLK_RIGHT, (1149, 400), (1150, 400)),
+        (game.SDLK_DOWN, (600, 51), (600, 50)),
+        (game.SDLK_UP, (600, 749), (600, 750)),
+    ]:
+        game.x, game.y = start
+        game.pressed_keys = {key}
+        game.update()
+        assert (game.x, game.y) == expected and game.moving
+        game.update()
+        assert (game.x, game.y) == expected and not game.moving
+
+    for horizontal, edge_x, inward_x in [(game.SDLK_LEFT, 50, game.SDLK_RIGHT),
+                                         (game.SDLK_RIGHT, 1150, game.SDLK_LEFT)]:
+        for vertical, edge_y, inward_y in [(game.SDLK_DOWN, 50, game.SDLK_UP),
+                                          (game.SDLK_UP, 750, game.SDLK_DOWN)]:
+            game.x, game.y = edge_x, edge_y
+            game.pressed_keys = {horizontal, vertical}
+            for _ in range(10):
+                game.update()
+                assert (game.x, game.y) == (edge_x, edge_y) and not game.moving
+            game.pressed_keys = {inward_x, inward_y}
+            game.update()
+            assert 50 < game.x < 1150 and 50 < game.y < 750 and game.moving
+
+    game.x, game.y = 50, 400
+    game.pressed_keys = {game.SDLK_LEFT, game.SDLK_UP}
+    game.update()
+    assert (game.x, game.y) == (50, 405) and game.moving
+
     game.running = True
     send_event(game.SDL_KEYDOWN, game.SDLK_ESCAPE)
     assert not game.running
     game.running = True
     send_event(game.SDL_QUIT)
     assert not game.running
-    print('PASS: input, facing, state transitions, frame cycle, sprite selection, exit')
+    print('PASS: input, facing, animation, four edges, four corners, edge sliding, exit')
 
 
 if __name__ == '__main__':
