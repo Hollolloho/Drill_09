@@ -5,13 +5,22 @@ from unittest.mock import patch
 import Drill_09_2023180036 as game
 
 
+keyboard_keys = set()
+
+
 def send_event(event_type, key=None):
-    original = game.get_events
-    try:
-        game.get_events = lambda: [SimpleNamespace(type=event_type, key=key)]
+    if key in game.ARROW_KEYS:
+        if event_type == game.SDL_KEYDOWN:
+            keyboard_keys.add(key)
+        elif event_type == game.SDL_KEYUP:
+            keyboard_keys.discard(key)
+    keyboard = {game.ARROW_KEYS[arrow]: arrow in keyboard_keys
+                for arrow in game.ARROW_KEYS}
+    with patch.object(game, 'get_events',
+                      return_value=[SimpleNamespace(type=event_type, key=key)]), \
+         patch.object(game, 'SDL_GetKeyboardState', return_value=keyboard), \
+         patch.object(game, 'SDL_GetKeyboardFocus', return_value=True):
         game.handle_events()
-    finally:
-        game.get_events = original
 
 
 def check():
@@ -21,6 +30,7 @@ def check():
                         (game.SDLK_DOWN, (0, -5))]:
         game.x, game.y = 600, 400
         game.pressed_keys.clear()
+        keyboard_keys.clear()
         send_event(game.SDL_KEYDOWN, key)
         send_event(game.SDL_KEYDOWN, key)
         game.update()
@@ -118,5 +128,40 @@ def check():
     print('PASS: input, facing, animation, four edges, four corners, edge sliding, exit')
 
 
+def check_stale_input():
+    game.running = True
+    game.x, game.y = 600, 400
+    game.pressed_keys = {game.SDLK_RIGHT}
+    keyboard = {game.ARROW_KEYS[key]: 0 for key in game.ARROW_KEYS}
+    # 과거 KEYDOWN이 남아 있어도 현재 모든 키를 놓았다면 정지해야 한다.
+    stale_events = [SimpleNamespace(type=game.SDL_KEYDOWN, key=game.SDLK_RIGHT)] * 20
+    with patch.object(game, 'get_events', return_value=stale_events), \
+         patch.object(game, 'SDL_GetKeyboardState', return_value=keyboard), \
+         patch.object(game, 'SDL_GetKeyboardFocus', return_value=True):
+        game.handle_events()
+        game.update()
+    assert (game.x, game.y) == (600, 400) and not game.moving
+    assert not game.pressed_keys
+
+    # KEYUP이 빠져도 현재 왼쪽 키만 눌렸다면 즉시 왼쪽으로 전환해야 한다.
+    keyboard[game.ARROW_KEYS[game.SDLK_LEFT]] = 1
+    game.pressed_keys = {game.SDLK_RIGHT}
+    with patch.object(game, 'get_events', return_value=[]), \
+         patch.object(game, 'SDL_GetKeyboardState', return_value=keyboard), \
+         patch.object(game, 'SDL_GetKeyboardFocus', return_value=True):
+        game.handle_events()
+        game.update()
+    assert (game.x, game.y) == (595, 400) and game.facing == -1
+
+    # 포커스를 잃으면 눌린 것으로 보이는 키가 있어도 이동을 멈춘다.
+    with patch.object(game, 'get_events', return_value=[]), \
+         patch.object(game, 'SDL_GetKeyboardFocus', return_value=False):
+        game.handle_events()
+        game.update()
+    assert (game.x, game.y) == (595, 400) and not game.moving
+    assert not game.pressed_keys
+    print('PASS: stale KEYDOWN, missing KEYUP, immediate direction change, focus loss')
+
 if __name__ == '__main__':
     check()
+    check_stale_input()

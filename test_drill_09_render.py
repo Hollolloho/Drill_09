@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import sys
 
-# 화면을 띄우지 않고 실제 SDL 이벤트와 소프트웨어 렌더링을 검사한다.
+# 실제 SDL 이벤트 큐와 렌더링을 검사하고 현재 키 상태는 명시적으로 모의한다.
 os.environ['SDL_VIDEODRIVER'] = 'dummy'
 os.environ['SDL_AUDIODRIVER'] = 'dummy'
 
@@ -35,8 +35,10 @@ def check(capture_dir=None):
     ]
     index = 0
     held_keys = set()
+    keyboard_state = (ctypes.c_uint8 * 512)()
     digests = []
     original_open, original_draw, original_delay = game.open_canvas, game.draw, game.delay
+    original_keyboard, original_focus = game.SDL_GetKeyboardState, game.SDL_GetKeyboardFocus
 
     def push_key(event_type, key):
         event = SDL_Event()
@@ -51,6 +53,8 @@ def check(capture_dir=None):
         for key in keys - held_keys:
             push_key(SDL_KEYDOWN, key)
         held_keys = keys
+        for key, scancode in game.ARROW_KEYS.items():
+            keyboard_state[scancode] = key in keys
 
     def software_canvas(*args):
         original_open(*args)
@@ -99,14 +103,17 @@ def check(capture_dir=None):
     game.x, game.y, game.facing, game.moving = 600, 400, 1, False
     game.pressed_keys.clear()
     game.open_canvas, game.draw, game.delay = software_canvas, checked_draw, next_step
+    game.SDL_GetKeyboardState = lambda count: keyboard_state
+    game.SDL_GetKeyboardFocus = lambda: True
     try:
         game.main()
     finally:
         game.open_canvas, game.draw, game.delay = original_open, original_draw, original_delay
+        game.SDL_GetKeyboardState, game.SDL_GetKeyboardFocus = original_keyboard, original_focus
     assert index == len(steps) and not game.running
     assert digests[0] != digests[1], 'Right IDLE frames must render differently'
     assert digests[7] != digests[8], 'Left IDLE frames must render differently'
-    print('PASS: real SDL input, rendered idle frames, movement, facing, corner, ESC')
+    print('PASS: SDL event queue, simulated key state, rendered animation, movement, corner, ESC')
 
 
 

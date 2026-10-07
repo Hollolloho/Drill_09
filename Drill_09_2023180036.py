@@ -8,7 +8,10 @@ FRAME_SIZE = 100
 FRAME_COUNT = 8
 FRAME_DELAY = 0.05
 MOVE_STEP = 5
-ARROW_KEYS = {SDLK_LEFT, SDLK_RIGHT, SDLK_UP, SDLK_DOWN}
+ARROW_KEYS = {
+    SDLK_LEFT: SDL_SCANCODE_LEFT, SDLK_RIGHT: SDL_SCANCODE_RIGHT,
+    SDLK_UP: SDL_SCANCODE_UP, SDLK_DOWN: SDL_SCANCODE_DOWN,
+}
 IMAGE_DIR = Path(__file__).resolve().parent
 
 pressed_keys = set()
@@ -24,13 +27,15 @@ def handle_events():
     for event in get_events():
         if event.type == SDL_QUIT:
             running = False
-        elif event.type == SDL_KEYDOWN:
-            if event.key == SDLK_ESCAPE:
-                running = False
-            elif event.key in ARROW_KEYS:
-                pressed_keys.add(event.key)
-        elif event.type == SDL_KEYUP:
-            pressed_keys.discard(event.key)
+        elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
+            running = False
+
+    # 과거 이벤트를 누적하지 않고, 이벤트 처리 후의 현재 키 상태를 읽는다.
+    pressed_keys.clear()
+    if SDL_GetKeyboardFocus():
+        keyboard = SDL_GetKeyboardState(None)
+        pressed_keys.update(key for key, scancode in ARROW_KEYS.items()
+                            if keyboard[scancode])
 
 
 def update():
