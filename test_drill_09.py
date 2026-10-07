@@ -1,5 +1,6 @@
 """실행: python test_drill_09.py"""
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import Drill_09_2023180036 as game
 
@@ -51,13 +52,39 @@ def check():
         game.update()
         assert game.facing == expected
 
+    game.pressed_keys.clear()
+    game.frame = 0
+    frames = []
+    for _ in range(8):
+        game.update()
+        frames.append(game.frame)
+        assert not game.moving
+    assert frames == [1, 2, 3, 4, 5, 6, 7, 0]
+
+    game.pressed_keys = {game.SDLK_UP}
+    game.update()
+    assert game.moving
+    game.pressed_keys.clear()
+    game.update()
+    assert not game.moving
+
+    background = SimpleNamespace(draw=lambda *args: None)
+    calls = []
+    character = SimpleNamespace(clip_draw=lambda *args: calls.append(args))
+    with patch.object(game, 'clear_canvas'), patch.object(game, 'update_canvas'):
+        for moving, facing, row in [(True, -1, 0), (True, 1, 100),
+                                   (False, -1, 200), (False, 1, 300)]:
+            game.moving, game.facing = moving, facing
+            game.draw(background, character)
+            assert calls[-1][:4] == (game.frame * 100, row, 100, 100)
+
     game.running = True
     send_event(game.SDL_KEYDOWN, game.SDLK_ESCAPE)
     assert not game.running
     game.running = True
     send_event(game.SDL_QUIT)
     assert not game.running
-    print('PASS: arrow keys, repeat, release, opposite keys, diagonal input, exit')
+    print('PASS: input, facing, state transitions, frame cycle, sprite selection, exit')
 
 
 if __name__ == '__main__':
