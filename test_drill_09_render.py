@@ -39,6 +39,9 @@ def check(capture_dir=None):
     digests = []
     original_open, original_draw, original_delay = game.open_canvas, game.draw, game.delay
     original_keyboard, original_focus = game.SDL_GetKeyboardState, game.SDL_GetKeyboardFocus
+    original_time = game.get_time
+    time_samples = iter([0.0] + [step * game.FRAME_DELAY
+                                for step in range(1, len(steps) + 2) for _ in range(2)])
 
     def push_key(event_type, key):
         event = SDL_Event()
@@ -67,7 +70,8 @@ def check(capture_dir=None):
     def checked_draw(background, character):
         nonlocal index
         _, position, facing, moving, name = steps[index]
-        assert (game.x, game.y) == position, (name, game.x, game.y)
+        assert all(abs(actual - expected) < 1e-6
+                   for actual, expected in zip((game.x, game.y), position)), name
         assert game.facing == facing and game.moving == moving, name
         assert game.frame == (index + 1) % game.FRAME_COUNT
         original_draw(background, character)
@@ -100,16 +104,19 @@ def check(capture_dir=None):
     if capture_dir:
         capture_dir.mkdir(parents=True, exist_ok=True)
     game.running, game.frame = True, 0
+    game.animation_time = 0.0
     game.x, game.y, game.facing, game.moving = 600, 400, 1, False
     game.pressed_keys.clear()
     game.open_canvas, game.draw, game.delay = software_canvas, checked_draw, next_step
     game.SDL_GetKeyboardState = lambda count: keyboard_state
     game.SDL_GetKeyboardFocus = lambda: True
+    game.get_time = lambda: next(time_samples)
     try:
         game.main()
     finally:
         game.open_canvas, game.draw, game.delay = original_open, original_draw, original_delay
         game.SDL_GetKeyboardState, game.SDL_GetKeyboardFocus = original_keyboard, original_focus
+        game.get_time = original_time
     assert index == len(steps) and not game.running
     assert digests[0] != digests[1], 'Right IDLE frames must render differently'
     assert digests[7] != digests[8], 'Left IDLE frames must render differently'

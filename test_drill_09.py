@@ -1,4 +1,5 @@
 """실행: python test_drill_09.py"""
+from math import isclose
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -162,6 +163,40 @@ def check_stale_input():
     assert not game.pressed_keys
     print('PASS: stale KEYDOWN, missing KEYUP, immediate direction change, focus loss')
 
+
+def check_timing():
+    keyboard_keys.clear()
+    game.pressed_keys.clear()
+    game.x, game.y = 600, 400
+    game.frame, game.animation_time = 0, 0.0
+    game.pressed_keys = {game.SDLK_RIGHT}
+    for _ in range(60):
+        game.update(game.FRAME_INTERVAL)
+    assert isclose(game.x, 700) and game.y == 400
+    assert game.frame == 20 % game.FRAME_COUNT
+
+    game.x, game.y = 600, 400
+    game.pressed_keys.clear()
+    for index in range(50):
+        key = game.SDLK_LEFT if index % 2 == 0 else game.SDLK_RIGHT
+        expected_direction = -1 if key == game.SDLK_LEFT else 1
+        previous_x = game.x
+        send_event(game.SDL_KEYDOWN, key)
+        game.update(game.FRAME_INTERVAL)
+        assert game.facing == expected_direction
+        assert isclose(game.x - previous_x, expected_direction * 100 / 60, abs_tol=1e-8)
+        send_event(game.SDL_KEYUP, key)
+        released_position = game.x, game.y
+        game.update(game.FRAME_INTERVAL)
+        assert (game.x, game.y) == released_position and not game.moving
+
+    game.pressed_keys = {game.SDLK_RIGHT}
+    previous_x = game.x
+    game.update(1.0)
+    assert isclose(game.x - previous_x, 5)
+    print('PASS: preserved speed, animation rate, 50 rapid reversals, release, stall recovery')
+
 if __name__ == '__main__':
     check()
     check_stale_input()
+    check_timing()
