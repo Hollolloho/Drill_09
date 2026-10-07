@@ -5,6 +5,7 @@ from pico2d import *
 
 SCREEN_WIDTH, SCREEN_HEIGHT = 1200, 800
 FRAME_SIZE = 100
+FRAME_COUNT = 8
 FRAME_DELAY = 0.05
 MOVE_STEP = 5
 ARROW_KEYS = {SDLK_LEFT, SDLK_RIGHT, SDLK_UP, SDLK_DOWN}
@@ -13,6 +14,7 @@ IMAGE_DIR = Path(__file__).resolve().parent
 pressed_keys = set()
 running = True
 moving = False
+frame = 0
 x, y = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
 facing = 1  # 1: 오른쪽, -1: 왼쪽
 
@@ -32,7 +34,7 @@ def handle_events():
 
 
 def update():
-    global x, y, facing, moving
+    global x, y, facing, moving, frame
     previous_position = x, y
     dx = (SDLK_RIGHT in pressed_keys) - (SDLK_LEFT in pressed_keys)
     dy = (SDLK_UP in pressed_keys) - (SDLK_DOWN in pressed_keys)
@@ -41,6 +43,7 @@ def update():
     x += dx * MOVE_STEP
     y += dy * MOVE_STEP
     moving = (x, y) != previous_position
+    frame = (frame + 1) % FRAME_COUNT
 
 
 def draw(background, character):
@@ -50,7 +53,7 @@ def draw(background, character):
     row = 100 if facing == 1 else 0
     if not moving:
         row += 200
-    character.clip_draw(0, row, FRAME_SIZE, FRAME_SIZE, x, y)
+    character.clip_draw(frame * FRAME_SIZE, row, FRAME_SIZE, FRAME_SIZE, x, y)
     update_canvas()
 
 
