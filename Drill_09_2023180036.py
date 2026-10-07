@@ -42,7 +42,8 @@ def update():
         facing = dx
     x = clamp(FRAME_SIZE // 2, x + dx * MOVE_STEP,
               SCREEN_WIDTH - FRAME_SIZE // 2)
-    y += dy * MOVE_STEP
+    y = clamp(FRAME_SIZE // 2, y + dy * MOVE_STEP,
+              SCREEN_HEIGHT - FRAME_SIZE // 2)
     moving = (x, y) != previous_position
     frame = (frame + 1) % FRAME_COUNT
 
