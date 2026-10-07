@@ -39,6 +39,18 @@ def check():
     assert (game.x, game.y) == (605, 405)
     game.pressed_keys.clear()
 
+    for horizontal, expected in [(game.SDLK_LEFT, -1), (game.SDLK_RIGHT, 1)]:
+        game.pressed_keys = {horizontal}
+        game.update()
+        assert game.facing == expected
+        for vertical in (game.SDLK_UP, game.SDLK_DOWN):
+            game.pressed_keys = {vertical}
+            game.update()
+            assert game.facing == expected
+        game.pressed_keys.clear()
+        game.update()
+        assert game.facing == expected
+
     game.running = True
     send_event(game.SDL_KEYDOWN, game.SDLK_ESCAPE)
     assert not game.running
