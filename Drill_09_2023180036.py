@@ -40,7 +40,8 @@ def update():
     dy = (SDLK_UP in pressed_keys) - (SDLK_DOWN in pressed_keys)
     if dx:
         facing = dx
-    x += dx * MOVE_STEP
+    x = clamp(FRAME_SIZE // 2, x + dx * MOVE_STEP,
+              SCREEN_WIDTH - FRAME_SIZE // 2)
     y += dy * MOVE_STEP
     moving = (x, y) != previous_position
     frame = (frame + 1) % FRAME_COUNT
